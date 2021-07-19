@@ -1,0 +1,13 @@
+- name: define racadm yum repo
+  yum_repository:
+    name: Racadm
+    baseurl: http://linux.dell.com/repo/hardware/dsu/os_dependent/RHEL8_64
+    gpgcheck: no
+    enabled: yes
+    description: "Add repo"
+
+- name: install httpd and racadm
+  yum:
+    name:
+      - httpd
+      - srvadmin-idracadm7

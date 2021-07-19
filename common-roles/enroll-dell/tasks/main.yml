@@ -1,0 +1,9 @@
+- name: Copy template racadm
+  template:
+    src: templates/racadm.sh
+    dest: /root/racadm.sh
+    owner: root
+    mode: 700
+
+- name: Run racadm
+  shell: "/root/racadm.sh {{ bmc_user }} {{ bmc_password }} {{ bmc_address }} {{ iso_url }} {{ iso_name }}" 

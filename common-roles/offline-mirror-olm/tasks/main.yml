@@ -1,0 +1,82 @@
+- name: Copy local kubeconfig to remote server if set
+  ansible.builtin.copy:
+    src: "{{ provisioner_cluster_kubeconfig }}"
+    dest: "{{ temporary_path }}/kubeconfig"
+
+- name: Create temporary directory
+  tempfile:
+    state: directory
+  register: temporary_directory
+
+- name: Copy pull secret
+  ansible.builtin.copy:
+    content: "{{ pull_secret }}"
+    dest: "{{ temporary_directory.path }}/pull_secret"
+  register: pull_secret_loc
+
+- name: Install needed packages
+  yum:
+    name:
+      - podman
+      - skopeo
+    state: present
+
+- name: Download oc binary
+  ansible.builtin.unarchive:
+    src: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp-dev-preview/latest-{{ provisioner_cluster_version }}/openshift-client-linux.tar.gz"
+    dest: /usr/bin/
+    remote_src: yes
+    creates: /usr/bin/oc
+
+- name: Download opm binary
+  ansible.builtin.unarchive:
+    src: "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp-dev-preview/latest-{{ provisioner_cluster_version }}/opm-linux.tar.gz"
+    dest: /usr/bin/
+    remote_src: yes
+    creates: /usr/bin/opm
+
+- name: Copy template to temporary path
+  template:
+    src: "templates/{{ item }}"
+    dest: "{{ temporary_directory.path }}/{{ item | replace('.j2', '') }}"
+    mode: 0755
+  vars:
+    pull_secret_path: "{{ pull_secret_loc.dest }}"
+    binary_path: "/usr/bin/"
+  with_items:
+    - offline-operator-mirror.sh.j2
+    - catalogsource_redhat.yaml.j2
+    - fix-missing-images.sh.j2
+    - icsp.yaml.j2
+
+- name: Sync OLM operators
+  ansible.builtin.shell:
+    cmd: ./offline-operator-mirror.sh
+    chdir: "{{ temporary_directory.path }}"
+    executable: /bin/bash
+  environment:
+    KUBECONFIG: "{{ temporary_path }}/kubeconfig"
+    REGISTRY_AUTH_FILE: "{{ pull_secret_loc.dest }}"
+
+- name: Create catalog source
+  ansible.builtin.shell:
+    cmd: oc apply -f ./catalogsource_redhat.yaml
+    chdir: "{{ temporary_directory.path }}"
+  environment:
+    KUBECONFIG: "{{ temporary_path }}/kubeconfig"
+
+- name: Fix missing images
+  ansible.builtin.shell:
+    cmd: ./fix-missing-images.sh 
+    chdir: "{{ temporary_directory.path }}"
+    executable: /bin/bash
+  environment:
+    KUBECONFIG: "{{ temporary_path }}/kubeconfig"
+    REGISTRY_AUTH_FILE: "{{ pull_secret_loc.dest }}"
+
+- name: Apply ICSP
+  ansible.builtin.shell:
+    cmd: oc apply -f ./icsp.yaml
+    chdir: "{{ temporary_directory.path }}"
+  environment:
+    KUBECONFIG: "{{ temporary_path }}/kubeconfig"

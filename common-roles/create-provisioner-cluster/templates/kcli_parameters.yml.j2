@@ -1,0 +1,33 @@
+provisioning_enable: false
+version: nightly
+pool: default
+dualstack: false
+disconnected: true
+tag: "{{ provisioner_cluster_version }}"
+virtual_masters: true
+virtual_workers: false
+launch_steps: true 
+deploy_openshift: true
+extra_disks: [20, 20]
+cluster: {{ provisioner_cluster_name }}
+domain: {{ provisioner_cluster_domain }}
+uefi_legacy: true
+openshift_image: quay.io/openshift-release-dev/ocp-release:4.8.0-fc.1-x86_64
+baremetal_net: baremetal
+baremetal_macs:
+- aa:aa:aa:aa:bb:01
+- aa:aa:aa:aa:bb:02
+- aa:aa:aa:aa:bb:03
+installer_mac: aa:aa:aa:aa:bb:04
+virtual_masters_memory: 16384
+virtual_masters_numcpus: 8
+virtual_workers_deploy: false
+disk_size: 80
+baremetal_cidr: {{ provisioner_cidr }}
+api_ip: {{ provisioner_cidr | ansible.netcommon.nthhost('250') }}
+ingress_ip: {{ provisioner_cidr | ansible.netcommon.nthhost('251') }}
+ipmi_user: root
+ipmi_password: calvin
+disconnected_reuse: true
+disconnected_origin: quay.io
+disconnected_disk_size: 400

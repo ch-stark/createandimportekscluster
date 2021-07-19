@@ -1,0 +1,5 @@
+
+- name: Intall latest aicli
+  pip:
+    name: aicli
+    state: latest
